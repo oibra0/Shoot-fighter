@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FROST RUN — Biome Hub Prototype</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#081421;color:#eff8ff;font-family:system-ui,-apple-system,sans-serif}
+main{max-width:900px;margin:auto;padding:22px}h1{font-size:clamp(32px,8vw,54px);margin:4px 0;color:#b8eaff;letter-spacing:2px}
+.sub{color:#b5cfe0;margin:0 0 20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}
+button{padding:16px 12px;border:1px solid #82c9ef66;border-radius:14px;background:#122a3e;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+button.active{background:#17658a;border-color:#b8eaff}.card{margin-top:16px;border:1px solid #82c9ef55;border-radius:16px;padding:18px;background:linear-gradient(140deg,#132c40,#0b1825)}
+#title{font-size:25px;font-weight:900;margin-bottom:6px}#desc{line-height:1.5;color:#d8eaf5}#status{font-size:12px;color:#9cb9cc;margin-top:16px}
+a{color:#a9e6ff} .play{margin-top:14px;background:#1683b4}
+</style>
+</head><body><main>
+<h1>FROST RUN</h1><p class="sub">Biome Hub · Game development prototype</p>
+<div class="grid" id="biomes">
+<button class="active" data-biome="snow">❄️ SNOW</button>
+<button data-biome="desert">🏜️ DESERT</button>
+<button data-biome="jungle">🌴 JUNGLE</button>
+<button data-biome="city">🏙️ CITY</button>
+</div>
+<section class="card"><div id="title">❄️ Frozen Wasteland</div><div id="desc">Survive the frozen outpost, dodge enemy bots, and clear the area. This is the currently playable combat prototype.</div>
+<div id="status">STATUS: Snow combat prototype available. Other biomes are design previews, not yet playable levels.</div>
+<button class="play" id="play">OPEN PLAYABLE SNOW PROTOTYPE</button></section>
+</main>
+<script>
+const data={
+snow:{title:"❄️ Frozen Wasteland",desc:"Survive the frozen outpost, dodge enemy bots, and clear the area. This is the currently playable combat prototype.",status:"STATUS: Snow combat prototype available. Other biomes are design previews, not yet playable levels.",play:"OPEN PLAYABLE SNOW PROTOTYPE"},
+desert:{title:"🏜️ Desert Canyon",desc:"Explore dusty canyons, search for enemies, and prepare for a multi-phase sand monster boss inspired by classic sand-shaping villains. Shotgun, burst rifle, dash, and double jump are planned.",status:"STATUS: Design preview. Desert gameplay and boss are not implemented yet.",play:"SNOW PROTOTYPE IS PLAYABLE"},
+jungle:{title:"🌴 Lost Canopy",desc:"Survival exploration through dense foliage. Search for hidden enemy ambushes, follow vines and climb routes, then face a canopy beast that drops minions.",status:"STATUS: Design preview. Jungle gameplay is not implemented yet.",play:"SNOW PROTOTYPE IS PLAYABLE"},
+city:{title:"🏙️ Neon City",desc:"A rooftop network with climb points, patrol drones, security bots, dash routes, and a light stealth system built around shadows and breaking line of sight.",status:"STATUS: Design preview. City gameplay is not implemented yet.",play:"SNOW PROTOTYPE IS PLAYABLE"}
+};
+let chosen="snow";
+document.querySelectorAll("[data-biome]").forEach(b=>b.addEventListener("click",()=>{
+ chosen=b.dataset.biome;document.querySelectorAll("[data-biome]").forEach(x=>x.classList.toggle("active",x===b));
+ const d=data[chosen];document.getElementById("title").textContent=d.title;document.getElementById("desc").textContent=d.desc;
+ document.getElementById("status").textContent=d.status;document.getElementById("play").textContent=d.play;
+}));
+document.getElementById("play").addEventListener("click",()=>{
+ if(chosen==="snow"){location.href="frost_run_level2.html"}
+ else {document.getElementById("status").textContent=data[chosen].status+" Choose Snow to play the current build."}
+});
+</script></body></html>

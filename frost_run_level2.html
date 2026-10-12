@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FROST RUN — Level 2</title>
+<style>
+  *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07111e;color:#eef8ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none}
+  #wrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(#0b1b2c,#07111e)}
+  canvas{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+  #hud{position:absolute;inset:0;pointer-events:none;text-shadow:0 2px 3px #000}
+  .top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start;font-weight:800;font-size:clamp(12px,2.2vw,18px)}
+  .pill{background:#06101dcc;border:1px solid #9ddcff55;border-radius:10px;padding:7px 10px}
+  #msg{position:absolute;top:19%;width:100%;text-align:center;font-size:clamp(18px,4vw,32px);font-weight:900;letter-spacing:1px}
+  #help{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);width:max-content;max-width:94%;text-align:center;background:#06101dcc;border:1px solid #9ddcff44;border-radius:10px;padding:7px 10px;font-size:12px}
+  #controls{position:absolute;inset:auto 0 55px 0;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
+  .cluster{display:grid;gap:7px;pointer-events:auto}
+  .dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,45px)}
+  .actions{grid-template-columns:repeat(2,64px);grid-template-rows:52px 52px}
+  button{border:1px solid #bfeaff88;background:#112b40cc;color:#fff;border-radius:12px;font-weight:800;font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none}
+  button:active{background:#2778a5}
+  .up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#030a12d9;padding:20px}
+  #panel{max-width:540px;text-align:center;border:1px solid #a4e2ff77;background:linear-gradient(150deg,#142f45f5,#07111ef5);padding:26px;border-radius:18px;box-shadow:0 12px 60px #0009}
+  h1{margin:0 0 6px;font-size:clamp(30px,7vw,48px);letter-spacing:2px;color:#b8eaff}
+  p{line-height:1.5;color:#d5e9f7}
+  #start{pointer-events:auto;padding:12px 24px;background:#1a88ba;border:0;font-size:17px;margin-top:8px}
+  .small{font-size:12px;color:#a9c6d9}
+  @media(min-width:800px){#controls{opacity:.65}.dpad{grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,48px)}}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="game" width="960" height="540" aria-label="Playable first-person snow biome game"></canvas>
+<div id="hud">
+  <div class="top">
+    <div class="pill">❄️ FROST RUN · LEVEL 2</div>
+    <div class="pill">❤️ <span id="hp">100</span> &nbsp; | &nbsp; AMMO ∞</div>
+    <div class="pill">ENEMIES: <span id="left">5</span></div>
+  </div>
+  <div id="msg"></div>
+  <div id="help">WASD / arrows to move · mouse or ◀ ▶ to turn · click / FIRE to shoot · SHIFT / DASH to dodge</div>
+</div>
+<div id="controls">
+  <div class="cluster dpad">
+    <button class="up" data-key="w">▲</button><button class="left" data-key="a">◀</button><button class="down" data-key="s">▼</button><button class="right" data-key="d">▶</button>
+  </div>
+  <div class="cluster actions">
+    <button data-key="left">TURN ◀</button><button data-key="right">TURN ▶</button>
+    <button id="dash">DASH ⚡</button><button id="fire">FIRE 🔫</button>
+  </div>
+</div>
+<div id="overlay">
+  <div id="panel">
+    <h1>FROST RUN</h1>
+    <div style="font-weight:800;color:#9ddcff">LEVEL 2 · FROZEN WASTELAND</div>
+    <p>Clear the frozen outpost. Find the enemy bots, dodge their shots, and survive the snowstorm.</p>
+    <p><b>Desktop:</b> WASD to move, mouse to aim, click to shoot, Shift to dash.<br><b>iPad / phone:</b> use the on-screen buttons.</p>
+    <button id="start">PLAY LEVEL 2</button>
+    <p class="small">Prototype game · no downloads or account needed to play in a browser.</p>
+  </div>
+</div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height, FOV=Math.PI/3, MAP=[
+"1111111111111111",
+"1000000000000001",
+"1011000100110001",
+"1000000000000001",
+"1000110001100001",
+"1000000000000001",
+"1010001100010001",
+"1000000000000001",
+"1001100000110001",
+"1000000000000001",
+"1111111111111111"
+];
+let player={x:2.2,y:2.2,a:0.15,hp:100},keys={},running=false,won=false,dead=false,shotFlash=0,last=0,dashTime=0,enemyFire=0;
+let enemies=[];
+const spawn=()=>{enemies=[
+{x:7.2,y:1.8,hp:2,alive:true},{x:12.3,y:2.2,hp:2,alive:true},{x:5.4,y:5.3,hp:2,alive:true},
+{x:10.8,y:7.3,hp:3,alive:true},{x:13.2,y:9.1,hp:3,alive:true}
+];};
+spawn();
+function wall(x,y){let mx=Math.floor(x),my=Math.floor(y);return !MAP[my]||MAP[my][mx]!=='0'}
+function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}
+function clearPath(x1,y1,x2,y2){let d=Math.hypot(x2-x1,y2-y1),steps=Math.ceil(d*12);for(let i=1;i<steps;i++){let t=i/steps;if(wall(x1+(x2-x1)*t,y1+(y2-y1)*t))return false}return true}
+function move(dx,dy){let nx=player.x+dx,ny=player.y+dy;if(!wall(nx,player.y)&&!enemies.some(e=>e.alive&&Math.hypot(e.x-nx,e.y-player.y)<.28))player.x=nx;if(!wall(player.x,ny)&&!enemies.some(e=>e.alive&&Math.hypot(e.x-player.x,e.y-ny)<.28))player.y=ny}
+function shoot(){if(!running||dead||won)return;shotFlash=0.12;let target=null,best=.12;for(let e of enemies){if(!e.alive)continue;let a=norm(Math.atan2(e.y-player.y,e.x-player.x)-player.a),d=Math.hypot(e.x-player.x,e.y-player.y);if(Math.abs(a)<best&&d<10&&clearPath(player.x,player.y,e.x,e.y)){best=Math.abs(a);target=e}}if(target){target.hp--;if(target.hp<=0)target.alive=false;updateHud();if(enemies.every(e=>!e.alive)){won=true;document.getElementById('msg').textContent='OUTPOST CLEARED!';setTimeout(showEnd,500)}}}
+function dash(){if(!running||dead||won||dashTime>0)return;dashTime=.22;move(Math.cos(player.a)*.85,Math.sin(player.a)*.85)}
+function updateHud(){document.getElementById('hp').textContent=Math.max(0,Math.ceil(player.hp));document.getElementById('left').textContent=enemies.filter(e=>e.alive).length}
+function showEnd(){document.getElementById('overlay').style.display='flex';document.querySelector('#panel h1').textContent=won?'MISSION COMPLETE!':'TRY AGAIN';document.querySelector('#panel p').innerHTML=won?'You cleared the Frozen Wasteland. Level 3: Desert unlocked in this prototype!':'The outpost got you this time. Give it another run!';document.getElementById('start').textContent='PLAY AGAIN'}
+function start(){player={x:2.2,y:2.2,a:0.15,hp:100};spawn();won=false;dead=false;running=true;document.getElementById('overlay').style.display='none';document.getElementById('msg').textContent='';updateHud()}
+document.getElementById('start').addEventListener('click',start);
+document.getElementById('fire').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});
+document.getElementById('dash').addEventListener('pointerdown',e=>{e.preventDefault();dash()});
+document.querySelectorAll('[data-key]').forEach(b=>{let k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))});
+window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();shoot()}if(e.key==='Shift')dash()});
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+canvas.addEventListener('click',()=>{if(running)shoot()});
+canvas.addEventListener('mousemove',e=>{if(running&&e.buttons===2)player.a+=e.movementX*.004});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+let dragging=false,lastX=0;
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'){dragging=true;lastX=e.clientX}});
+canvas.addEventListener('pointermove',e=>{if(dragging&&e.pointerType!=='mouse'){player.a+=(e.clientX-lastX)*.009;lastX=e.clientX}});
+canvas.addEventListener('pointerup',()=>dragging=false);
+function cast(angle){let sin=Math.sin(angle),cos=Math.cos(angle);for(let d=.03;d<18;d+=.025){let x=player.x+cos*d,y=player.y+sin*d;if(wall(x,y))return {d,x,y}}return {d:18,x:player.x+cos*18,y:player.y+sin*18}}
+function render(){
+ const sky=ctx.createLinearGradient(0,0,0,H/2);sky.addColorStop(0,'#10253b');sky.addColorStop(1,'#a9d5e8');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H/2);
+ const floor=ctx.createLinearGradient(0,H/2,0,H);floor.addColorStop(0,'#a8c9d9');floor.addColorStop(1,'#edf8ff');ctx.fillStyle=floor;ctx.fillRect(0,H/2,W,H/2);
+ // snowy horizon silhouettes
+ ctx.fillStyle='#d7edf7';ctx.beginPath();ctx.moveTo(0,H*.53);for(let x=0;x<=W;x+=80)ctx.lineTo(x,H*(.43+Math.abs(Math.sin(x*.013))*.08));ctx.lineTo(W,H*.56);ctx.fill();
+ let depth=new Array(W);
+ for(let x=0;x<W;x++){let a=player.a+(x/W-.5)*FOV,r=cast(a),correct=r.d*Math.cos(a-player.a);depth[x]=correct;let hh=Math.min(H*1.5,H/(correct*.85)),top=H/2-hh/2;let side=(Math.abs(r.x-Math.round(r.x))<.045||Math.abs(r.y-Math.round(r.y))<.045);let shade=Math.max(35,210-correct*13);ctx.fillStyle=side?`rgb(${shade-20},${shade},${shade+8})`:`rgb(${shade},${shade+10},${shade+15})`;ctx.fillRect(x,top,1,hh);if(hh>25){ctx.fillStyle='#effaff';ctx.fillRect(x,top,1,Math.max(2,hh*.045))}}
+ // enemies rendered as billboard bots
+ let visible=enemies.filter(e=>e.alive).map(e=>({...e,d:Math.hypot(e.x-player.x,e.y-player.y),a:norm(Math.atan2(e.y-player.y,e.x-player.x)-player.a)})).filter(e=>Math.abs(e.a)<FOV*.72).sort((a,b)=>b.d-a.d);
+ for(let e of visible){let sx=(.5+e.a/FOV)*W, size=Math.min(H*.75,H/(e.d*.8)), sy=H/2-size*.48;if(sx<0||sx>=W||e.d<.2||e.d>depth[Math.max(0,Math.min(W-1,Math.floor(sx)))])continue;
+ // robot body
+ ctx.fillStyle='#19394d';ctx.fillRect(sx-size*.25,sy+size*.28,size*.5,size*.55);
+ ctx.fillStyle='#69d8f5';ctx.fillRect(sx-size*.31,sy+size*.08,size*.62,size*.28);
+ ctx.fillStyle='#061522';ctx.fillRect(sx-size*.22,sy+size*.15,size*.12,size*.07);ctx.fillRect(sx+size*.1,sy+size*.15,size*.12,size*.07);
+ ctx.fillStyle='#ff657b';ctx.fillRect(sx-size*.08,sy+size*.17,size*.16,size*.035);
+ ctx.fillStyle='#142d3b';ctx.fillRect(sx-size*.35,sy+size*.78,size*.18,size*.16);ctx.fillRect(sx+size*.17,sy+size*.78,size*.18,size*.16);
+ ctx.fillStyle='#081522';ctx.fillRect(sx-size*.25,sy-size*.02,size*.5,4);ctx.fillStyle='#75ffb0';ctx.fillRect(sx-size*.25,sy-size*.02,size*.5*Math.max(0,e.hp/3),4);
+ }
+ // weapon
+ ctx.fillStyle='#152b3a';ctx.beginPath();ctx.moveTo(W*.43,H);ctx.lineTo(W*.46,H*.79);ctx.lineTo(W*.56,H*.79);ctx.lineTo(W*.61,H);ctx.fill();ctx.fillStyle='#6ea7c2';ctx.fillRect(W*.475,H*.78,W*.07,H*.17);ctx.fillStyle='#233f51';ctx.fillRect(W*.49,H*.73,W*.04,H*.08);
+ if(shotFlash>0){ctx.fillStyle='#fff5b0';ctx.beginPath();ctx.moveTo(W*.5,H*.76);ctx.lineTo(W*.46,H*.65);ctx.lineTo(W*.5,H*.68);ctx.lineTo(W*.54,H*.64);ctx.fill()}
+ // crosshair
+ ctx.strokeStyle='#f2fcff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-10,H/2);ctx.lineTo(W/2-3,H/2);ctx.moveTo(W/2+3,H/2);ctx.lineTo(W/2+10,H/2);ctx.moveTo(W/2,H/2-10);ctx.lineTo(W/2,H/2-3);ctx.moveTo(W/2,H/2+3);ctx.lineTo(W/2,H/2+10);ctx.stroke();
+ // snow particles
+ for(let i=0;i<55;i++){let x=(i*137+performance.now()*.018*(i%3+1))%W,y=(i*71+performance.now()*.035*(i%4+1))%H;ctx.fillStyle='#fff';ctx.globalAlpha=.25+(i%5)*.1;ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1;
+}
+function loop(t){let dt=Math.min(.04,(t-last)/1000||0);last=t;if(running&&!dead&&!won){let speed=(keys['shift']||dashTime>0?3.7:2.1)*dt;if(keys['arrowleft']||keys['left'])player.a-=1.9*dt;if(keys['arrowright']||keys['right'])player.a+=1.9*dt;let f=0,s=0;if(keys.w||keys.arrowup)f++;if(keys.s||keys.arrowdown)f--;if(keys.a)s--;if(keys.d)s++;if(f||s){let a=player.a+(s?Math.atan2(s,f):0);let mag=s&&f?.707:1;move(Math.cos(a)*speed*mag,Math.sin(a)*speed*mag)}dashTime=Math.max(0,dashTime-dt);shotFlash=Math.max(0,shotFlash-dt);
+ enemyFire+=dt;if(enemyFire>1.1){enemyFire=0;for(let e of enemies){if(e.alive&&Math.hypot(e.x-player.x,e.y-player.y)<7&&clearPath(e.x,e.y,player.x,player.y)){player.hp-=Math.random()<.6?4:7;break}}updateHud();if(player.hp<=0){dead=true;document.getElementById('msg').textContent='YOU WERE ELIMINATED';setTimeout(showEnd,500)}}}
+ render();requestAnimationFrame(loop)}
+updateHud();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
